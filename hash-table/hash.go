@@ -9,8 +9,10 @@ const (
 	factor       = 1.5
 	startSize    = 10
 	rehashFactor = 0.8
-	startHash = 6454654
+	startHash    = 6454654
 )
+
+var keys = make(map[uint][]string)
 
 type HashTable struct {
 	itemCount  uint
@@ -46,17 +48,17 @@ func (h *HashTable) Set(key string, v interface{}) {
 		if item.key == key {
 			item.value = v
 		} else {
-			h.addToItem(item, key, v)
+			h.itemCount++
+			h.addToNext(item, key, v)
 		}
 	} else {
+		h.itemCount++
 		h.store[idx] = &hashItem{
 			value: v,
 			key:   key,
 			next:  nil,
 		}
 	}
-
-	h.itemCount++
 
 	if h.isNeedRehash() {
 		h.rehash()
@@ -74,6 +76,18 @@ func (h *HashTable) Get(key string) interface{} {
 	return searchInItem(item, key)
 }
 
+func (h *HashTable) GetAllKeys() []string {
+	res := make([]string, 0, h.itemCount)
+
+	for _, v := range h.store {
+		if v != nil {
+			res = append(res, v.key)
+		}
+	}
+
+	return res
+}
+
 func searchInItem(item *hashItem, key string) interface{} {
 	if item.key == key {
 		return item.value
@@ -86,15 +100,17 @@ func searchInItem(item *hashItem, key string) interface{} {
 	return nil
 }
 
-func (h *HashTable) addToItem(item *hashItem, key string, value interface{}) {
+func (h *HashTable) addToNext(item *hashItem, key string, value interface{}) {
 	if item.next == nil {
 		item.next = &hashItem{
 			value: value,
 			key:   key,
 			next:  nil,
 		}
+	} else if item.next.key == key {
+		item.next.value = value
 	} else {
-		h.addToItem(item.next, key, value)
+		h.addToNext(item.next, key, value)
 	}
 }
 
@@ -113,13 +129,14 @@ func (h *HashTable) rehash() {
 	var next *hashItem
 
 	for _, v := range h.store {
-
 		if v != nil {
 			next = v.next
+			v.next = nil
 			h.addToTmp(tmp, v)
 
 			for next != nil {
 				tmpNext := next.next
+				next.next = nil
 				h.addToTmp(tmp, next)
 				next = tmpNext
 			}
@@ -131,10 +148,13 @@ func (h *HashTable) rehash() {
 
 func (h *HashTable) addToTmp(tmp []*hashItem, item *hashItem) {
 	code := h.hash(item.key)
-	item.next = nil
 
 	if tmp[code] != nil {
-		h.addToItem(tmp[code], item.key, item.value)
+		if tmp[code].key == item.key {
+			tmp[code].value = item.value
+		} else {
+			h.addToNext(tmp[code], item.key, item.value)
+		}
 	} else {
 		tmp[code] = item
 	}
@@ -142,6 +162,23 @@ func (h *HashTable) addToTmp(tmp []*hashItem, item *hashItem) {
 
 func (h *HashTable) hash(key string) uint {
 	code := h.hashCode(key)
+
+	if keyList, ok := keys[code]; ok {
+		add := true
+		for _, y := range keyList {
+			if y == key {
+				add = false
+			}
+		}
+
+		if add {
+			keyList = append(keyList, key)
+		}
+		keys[code] = keyList
+	} else {
+		keys[code] = []string{key}
+	}
+
 	return code % h.size
 }
 
@@ -151,7 +188,7 @@ func (h *HashTable) hashCode(s string) uint {
 	b := []byte(s)
 
 	for _, v := range b {
-		hashCode = hashCode << 5 + uint(v)
+		hashCode = hashCode<<5 + uint(v)
 	}
 
 	return hashCode
