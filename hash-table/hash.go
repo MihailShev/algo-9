@@ -40,6 +40,10 @@ func NewHashTable() HashTable {
 	return h
 }
 
+func (h *HashTable) Size() int {
+	return int(h.itemCount)
+}
+
 func (h *HashTable) Set(key string, v interface{}) {
 	idx := h.hash(key)
 	item := h.store[idx]
@@ -86,6 +90,41 @@ func (h *HashTable) GetAllKeys() []string {
 	}
 
 	return res
+}
+
+func (h *HashTable) Remove(key string) {
+	code := h.hash(key)
+	item := h.store[code]
+
+	if item != nil {
+		if item.key == key {
+			if item.next != nil {
+				h.store[code] = item.next
+			} else {
+				h.store[code] = nil
+			}
+			h.itemCount--
+		} else {
+			h.removeFromItem(item, key)
+		}
+	}
+}
+
+func (h *HashTable) removeFromItem(item *hashItem, key string) {
+	if item.next == nil {
+		return
+	}
+
+	if item.next.key == key {
+		if item.next.next != nil {
+			item.next = item.next.next
+		} else {
+			item.next = nil
+		}
+		h.itemCount--
+	} else {
+		h.removeFromItem(item.next, key)
+	}
 }
 
 func searchInItem(item *hashItem, key string) interface{} {

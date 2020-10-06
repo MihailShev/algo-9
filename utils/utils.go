@@ -28,12 +28,18 @@ func FillArrayUniqRandom(from, to int) []int {
 
 func GetRandomValueList(arr []int, amount int) []int {
 	res := make([]int, 0, amount)
-	max := len(arr) - 1
-	rand.Seed(time.Now().UTC().UnixNano())
+	tmp := make([]int, len(arr))
+	copy(tmp, arr)
+	mix(tmp)
 
-	for i := 0; i < amount; i++ {
-		res = append(res, arr[getRandom(0, max)])
+	//rand.Seed(time.Now().UTC().UnixNano())
+
+	for i := 0; i < amount && i < len(tmp); i++ {
+		res = append(res, tmp[i])
 	}
+	//for i := 0; i < amount; i++ {
+	//	res = append(res, arr[getRandom(0, max)])
+	//}
 
 	return res
 }
